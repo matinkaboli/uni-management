@@ -1,29 +1,174 @@
+import useSWR from 'swr';
 import cn from 'classnames';
 import { useNavigate } from 'react-router-dom';
 import Button from 'renderer/components/Button';
 import DashboardLayout from 'renderer/components/DashboardLayout';
+import adminFetcher from 'renderer/utils/adminFetcher';
+import Table from 'renderer/components/Table';
+import { DateTime } from 'luxon';
+import deleteTeacher from 'renderer/actions/deleteCourse';
+import Swal from 'sweetalert2';
+import { useForm, Controller } from 'react-hook-form';
+import addTeacher from 'renderer/actions/addCourse';
 
 import styles from './styles.module.scss';
 
-const AdminCourses = () => {
+const AdminTeachers = () => {
+  const { data, error } = useSWR('/v1/admin/teacher', adminFetcher, {
+    refreshInterval: 3000,
+  });
+  const { data: data1, error: error1 } = useSWR(
+    '/v1/admin/course',
+    adminFetcher,
+    {
+      refreshInterval: 3000,
+    }
+  );
+
+  const {
+    handleSubmit,
+    control,
+    formState,
+    trigger,
+    setError,
+    reset,
+    register,
+  } = useForm({
+    mode: 'onChange',
+  });
+
   const history = useNavigate();
+
+  const columns = [
+    {
+      title: 'درس',
+      dataIndex: 'name',
+      key: 1,
+    },
+    {
+      title: 'واحد',
+      dataIndex: 'vahed',
+      key: 1,
+    },
+    {
+      title: 'استاد',
+      dataIndex: 'teacher',
+      key: 1,
+    },
+    {
+      title: 'اضافه شده در',
+      dataIndex: 'createdAt',
+      key: 2,
+    },
+    {
+      title: 'ابزار',
+      dataIndex: 'actions',
+      key: 2,
+    },
+  ];
+
+  const submitForm = (formData) => {
+    if (!formData.gender) {
+      Swal.fire({
+        title: 'خطا',
+        text: 'استاد را انتخاب کنید',
+        icon: 'error',
+        confirmButtonText: 'باشه',
+      });
+
+      return;
+    }
+
+    addTeacher(formData).then((resultData) => {
+      if (resultData) {
+        Swal.fire({
+          title: 'اضافه شد',
+          icon: 'success',
+          confirmButtonText: 'باشه',
+        });
+
+        reset({
+          teacherName: '',
+        });
+      } else {
+        Swal.fire({
+          title: 'خطا',
+          text: 'بعدا امتحان کنید',
+          icon: 'error',
+          confirmButtonText: 'باشه',
+        });
+      }
+    });
+  };
+
+  const showData = () => {
+    if (!data && !error) {
+      return <p>در حال دریافت اطلاعات...</p>;
+    }
+
+    if (error) {
+      return <p>ارور. لطفا دوباره امتحان کنید.</p>;
+    }
+
+    const d = data1?.courses?.map((x) => ({
+      name: x.name,
+      vahed: x.name,
+      teacher:
+        data?.teachers?.find((y) => y._id === x.teacher)?.name || 'استاد',
+      createdAt: DateTime.fromISO(x.createdAt).toRelativeCalendar(),
+      actions: (
+        <div>
+          <Button
+            className={styles.exitButton}
+            content="حذف"
+            onClick={() => {
+              deleteTeacher(x._id).then((result) => {
+                if (result) {
+                  Swal.fire({
+                    title: 'حذف شد',
+                    icon: 'success',
+                    confirmButtonText: 'باشه',
+                  });
+                } else {
+                  Swal.fire({
+                    title: 'خطا',
+                    text: 'بعدا امتحان کنید',
+                    icon: 'error',
+                    confirmButtonText: 'باشه',
+                  });
+                }
+              });
+            }}
+          />
+        </div>
+      ),
+    }));
+
+    return (
+      <Table
+        columns={columns}
+        data={d}
+        noDataMessage="هیچ درسی برای نمایش وجود ندارد"
+      />
+    );
+  };
 
   return (
     <DashboardLayout>
       <>
         <Button
           className={styles.btn}
-          content="مدیریت استاد ها"
+          content="داشبورد"
           onClick={() => {
-            history('/admin/teacher');
+            history('/admin/dashboard');
           }}
         />
 
         <Button
           className={styles.btn}
-          content="داشبورد"
+          content="مدیریت استاد ها"
           onClick={() => {
-            history('/admin/dashboard');
+            history('/admin/teacher');
           }}
         />
 
@@ -38,10 +183,67 @@ const AdminCourses = () => {
       </>
 
       <>
-        <h2>مدیریت دروس</h2>
+        <h2>مدیریت درس ها</h2>
+
+        <br />
+        <br />
+
+        {showData()}
+
+        <h2>اضافه کردن درس</h2>
+        <form onSubmit={handleSubmit(submitForm)}>
+          <Controller
+            name="courseName"
+            control={control}
+            rules={{ required: 'نام درس را وارد کنید' }}
+            render={({ field }) => (
+              <input
+                placeholder="نام درس"
+                ref={field.ref}
+                onChange={field.onChange}
+                value={field.value}
+              />
+            )}
+          />
+
+          <Controller
+            name="vahed"
+            control={control}
+            rules={{ required: 'شماره واحد' }}
+            render={({ field }) => (
+              <input
+                placeholder="شماره واحد"
+                ref={field.ref}
+                onChange={field.onChange}
+                value={field.value}
+              />
+            )}
+          />
+
+          <select {...register('gender')}>
+            {data?.teachers.map((x) => (
+              <option value={x._id}>{x.name}</option>
+            ))}
+          </select>
+
+          {formState?.errors?.courseName?.type === 'error' ? (
+            <p className={styles.errorMessage}>
+              {formState?.errors?.courseName.message}
+            </p>
+          ) : (
+            ''
+          )}
+
+          <Button
+            disabled={!formState.isValid || formState.isValidating}
+            bgColor="#7FFF00"
+            content="اضافه کردن درس"
+            type="submit"
+          />
+        </form>
       </>
     </DashboardLayout>
   );
 };
 
-export default AdminCourses;
+export default AdminTeachers;
