@@ -1,0 +1,20 @@
+.containerDashboard {
+  display: flex;
+}
+
+.navDashboard {
+  width: 200px;
+  min-height: 100vh;
+  border-left: 1px solid black;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+
+  & > * {
+    margin-top: 10px;
+  }
+}
+
+.mainPage {
+  padding: 15px;
+}

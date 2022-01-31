@@ -1,0 +1,21 @@
+@import 'styles/vars';
+
+@font-face {
+  font-family: iranSans;
+  src: url(../fonts/sans.ttf);
+}
+* {
+  font-family: iranSans;
+}
+
+body {
+  min-height: 100vh;
+  width: 100%;
+  font-family: sans-serif;
+  overflow-y: hidden;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  direction: rtl;
+  background-color: $backGround-color;
+}
